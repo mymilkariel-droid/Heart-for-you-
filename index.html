@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Partikel Hati 3D Three.js</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #050515;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <script src="https://cloudflare.com"></script>
+    <script>
+        // 1. Setup Scene, Kamera, dan Renderer
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 15;
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // 2. Buat Partikel
+        const particleCount = 1000;
+        const positions = [];
+        const targetPositions = [];
+        const colors = [];
+
+        // Fungsi Matematika Bentuk Hati 3D
+        function generateHeartPoint() {
+            const t = Math.PI * 2 * Math.random();
+            const p = Math.PI * Math.random();
+            const x = 16 * Math.pow(Math.sin(p), 3) * Math.cos(t);
+            const y = 13 * Math.cos(p) - 5 * Math.cos(2 * p) - 2 * Math.cos(3 * p) - Math.cos(4 * p);
+            const z = 16 * Math.pow(Math.sin(p), 3) * Math.sin(t);
+            return { x: x / 3, y: y / 3, z: z / 3 }; // Skala diperkecil agar pas di layar
+        }
+
+        // Variasi warna biru (dari ungu-biru hingga biru terang)
+        const blueColors = [
+            new THREE.Color(0x00c3ff), // Biru terang
+            new THREE.Color(0x0072ff), // Biru pekat
+            new THREE.Color(0x00f6ff), // Cyan
+            new THREE.Color(0x7000ff)  // Ungu kebiruan
+        ];
+
+        for (let i = 0; i < particleCount; i++) {
+            // Posisi Awal (Acak / Tersebar)
+            positions.push(
+                (Math.random() - 0.5) * 50,
+                (Math.random() - 0.5) * 50,
+                (Math.random() - 0.5) * 50
+            );
+
+            // Posisi Tujuan (Bentuk Hati)
+            const heart = generateHeartPoint();
+            targetPositions.push(heart.x, heart.y, heart.z);
+
+            // Warna Biru Acak
+            const color = blueColors[Math.floor(Math.random() * blueColors.length)];
+            colors.push(color.r, color.g, color.b);
+        }
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        geometry.setAttribute('targetPosition', new THREE.Float32BufferAttribute(targetPositions, 3));
+        geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+        // Material Partikel
+        const material = new THREE.PointsMaterial({
+            size: 0.4,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending
+        });
+
+        const particles = new THREE.Points(geometry, material);
+        scene.add(particles);
+
+        // 3. Animasi
+        let clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const time = clock.getElapsedTime();
+            
+            // Logika Animasi: Bergantian Menyatu dan Menyebar
+            // Math.sin(time * 0.5) menghasilkan nilai antara -1 dan 1
+            // Kita tambah 1 agar nilai positif dan bagi 2 agar berada di rentang 0 sampai 1
+            const progress = (Math.sin(time * 0.5) + 1) / 2; 
+
+            const positionsAttribute = geometry.attributes.position;
+            const targetAttribute = geometry.attributes.targetPosition;
+
+            for (let i = 0; i < particleCount; i++) {
+                const i3 = i * 3;
+
+                // Koordinat X, Y, Z saat ini
+                let currentX = positionsAttribute.array[i3];
+                let currentY = positionsAttribute.array[i3 + 1];
+                let currentZ = positionsAttribute.array[i3 + 2];
+
+                // Koordinat tujuan (hati)
+                let targetX = targetAttribute.array[i3];
+                let targetY = targetAttribute.array[i3 + 1];
+                let targetZ = targetAttribute.array[i3 + 2];
+
+                // Easing (Perlahan menyatu/menyebar)
+                currentX += (targetX - currentX) * 0.05 * progress;
+                currentY += (targetY - currentY) * 0.05 * progress;
+                currentZ += (targetZ - currentZ) * 0.05 * progress;
+
+                // Jika progress mendekati 0 (menyebar), biarkan partikel bergerak bebas kembali
+                if (progress < 0.1) {
+                    currentX += (Math.random() - 0.5) * 0.2;
+                    currentY += (Math.random() - 0.5) * 0.2;
+                    currentZ += (Math.random() - 0.5) * 0.2;
+                }
+
+                positionsAttribute.array[i3] = currentX;
+                positionsAttribute.array[i3 + 1] = currentY;
+                positionsAttribute.array[i3 + 2] = currentZ;
+            }
+
+            positionsAttribute.needsUpdate = true;
+
+            // Rotasi Hati
+            particles.rotation.y = time * 0.2;
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // Handle Resizable Window
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+  </html>
+  
